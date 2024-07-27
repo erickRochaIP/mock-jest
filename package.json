@@ -4,6 +4,7 @@
   "description": "Toy example for jest mocks",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "jest"
   },
   "author": "Erick",
