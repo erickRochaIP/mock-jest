@@ -1,0 +1,13 @@
+{
+  "name": "mock-jest",
+  "version": "1.0.0",
+  "description": "Toy example for jest mocks",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "Erick",
+  "dependencies": {
+    "jest": "^29.7.0"
+  }
+}
