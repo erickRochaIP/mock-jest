@@ -65,7 +65,7 @@ function requestMeowFact() {
 
 ```json
 {
-    data: [
+    "data": [
         "When well treated, a cat can live twenty or more years but the average life span of a domestic cat is 14 years."
     ]
 }
@@ -90,18 +90,19 @@ Ela recebe como parâmetro uma opção que determina se o resultado deve ser con
 Por último, o arquivo `meow-facts.test.js` contém os testes unitários de `meow-facts.js`.
 
 ```js
-const { getMeowFact } = require("./meow-facts");
+const rewire = require("rewire");
+const meowFacts = rewire("./meow-facts");
 
 describe("meow-facts suite", () => {
 
     test("Returns a meow fact to lower case", async () => {
-        const fact = await getMeowFact({ upperCase: false });
+        const fact = await meowFacts.getMeowFact({ upperCase: false });
 
         expect(fact).toEqual(fact.toLowerCase());
     })
 
     test("Returns a meow fact to upper case", async () => {
-        const fact = await getMeowFact({ upperCase: true });
+        const fact = await meowFacts.getMeowFact({ upperCase: true });
 
         expect(fact).toEqual(fact.toUpperCase());
     })
@@ -134,4 +135,47 @@ O parâmetro `upperCase: false` faz com que todas as letras sejam convertidas pa
 .then(fact => upperCase ? fact.toUpperCase() : fact);
 ```
 
-Execute a aplicação novamente e perceba que agora o comportamento está da forma que queremos. Porém, os testes ficaram desatualizados, portanto executar `npm test` deve falhar.
+Execute a aplicação novamente e perceba que agora o comportamento está da forma que queremos. Porém, os testes ficaram desatualizados, portanto, executar `npm test` deve falhar.
+
+Então, qual é a forma correta de atualizar o teste? Precisamos mudar a linha:
+
+```js
+expect(fact).toEqual(fact.toLowerCase());
+```
+
+Mas como vamos testar se a função `getMeowFact` está, de fato, mantendo a mensagem original sendo que não temos como saber antes do teste qual é essa mensagem?
+
+Esse é um bom momento para refletir sobre algumas dificuldades envolvidas em testar funções com algum grau de acoplamento. 
+
+- Nossa função `getMeowFact` depende de `requestMeowFact` que faz uma chamada a uma API. Esse é um serviço externo, no qual não temos controle de qual será o retorno. Isso dificulta a previsibilidade do resultado do teste.
+- Realizar chamadas a APIs pode impactar negativamente a performance dos testes, que precisam ser sempre tão rápidos quanto possível.
+- Existem funções que executam códigos que não queremos que sejam executados em testes. Imagine o cenário de uma API que envia email para cliente ou que realiza pagamentos. Esses são exemplos de códigos que não podem rodar durante os testes.
+
+O ideal seria isolarmos esses trechos de código que não podem ser executados em testes, e substituí-los por alguma implementação temporária. E esse é exatamente o conceito de mock!
+
+No arquivo de testes, antes do `describe`, inclua o seguinte trecho de código:
+
+```js
+const meowFactMocked = "When well treated, a cat can live twenty or more years but the average life span of a domestic cat is 14 years.";
+
+const requestMeowFactMock = jest.fn(() => Promise.resolve({
+    data: [meowFactMocked]
+}));
+meowFacts.__set__('requestMeowFact', requestMeowFactMock);
+```
+
+Dessa forma, estamos informando ao jest que, durante os testes, todas as chamadas à função `requestMeowFact` devem retornar o valor da constante `meowFactMocked`.
+
+Nos testes, basta alterar os valores esperados para dependerem de `meowFactMocked`.
+
+```js
+̣//expect(fact).toEqual(fact.toLowerCase());
+expect(fact).toEqual(meowFactMocked);
+```
+
+```js
+̣//expect(fact).toEqual(fact.toUpperCase());
+expect(fact).toEqual(meowFactMocked.toUpperCase());
+```
+
+Executando novamente os testes, podemos ver que todos passam corretamente.
